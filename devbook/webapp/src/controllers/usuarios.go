@@ -3,29 +3,35 @@ package controllers
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"webapp/src/respostas"
 )
 
-//FazerLogin utiliza o e-mail do usuario para autenticar na aplicação
-func FazerLogin(w http.ResponseWriter, r *http.Request) {
+//CriarUsuario chama a API para cadastrar um usuario
+func CriarUsuario(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	usuario, erro := json.Marshal(map[string]string{
+		"nome":  r.FormValue("nome"),
 		"email": r.FormValue("email"),
+		"nick":  r.FormValue("nick"),
 		"senha": r.FormValue("senha"),
 	})
 	if erro != nil {
 		respostas.JSON(w, http.StatusBadRequest, respostas.ErroAPI{Erro: erro.Error()})
 		return
 	}
-	response, erro := http.Post("http://localhost:500/login", "application/json", bytes.NewBuffer(usuario))
+	response, erro := http.Post("http://localhost:5000/usuarios", "application/json", bytes.NewBuffer(usuario))
 	if erro != nil {
 		respostas.JSON(w, http.StatusInternalServerError, respostas.ErroAPI{Erro: erro.Error()})
 		return
 	}
-	token, _ := ioutil.ReadAll(response.Body)
-	fmt.Println(response.StatusCode, string(token))
+	defer response.Body.Close()
+
+	if response.StatusCode >= 400 {
+		respostas.TratarStatusCodeDeErro(w, response)
+		return
+	}
+
+	respostas.JSON(w, response.StatusCode, nil)
 }
